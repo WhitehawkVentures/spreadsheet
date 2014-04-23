@@ -2,6 +2,7 @@ require 'stringio'
 require 'spreadsheet/excel/writer/biff8'
 require 'spreadsheet/excel/internals'
 require 'spreadsheet/excel/internals/biff8'
+require 'bigdecimal'
 
 module Spreadsheet
   module Excel
@@ -63,7 +64,7 @@ class Worksheet
     cent = 0
     int = 2
     higher = value * 100
-    if higher.is_a?(Float) && higher < 0xfffffffc
+    if (higher.is_a?(BigDecimal) or higher.is_a?(Float)) && higher < 0xfffffffc
       cent = 1
       if higher == higher.to_i
         value = higher.to_i
@@ -89,7 +90,7 @@ class Worksheet
   def need_number? cell
     if cell.is_a?(Numeric) && cell.abs > 0x1fffffff
       true
-    elsif cell.is_a?(Float) and not cell.nan?
+    elsif (cell.is_a?(BigDecimal) or cell.is_a?(Float)) and not cell.nan?
       higher = cell * 100
       if higher == higher.to_i
         need_number? higher.to_i
@@ -244,7 +245,7 @@ class Worksheet
   def write_changes reader, endpos, sst_status
 
     ## FIXME this is not smart solution to update outline_level.
-    #        without this process, outlines in row disappear in MS Excel.       
+    #        without this process, outlines in row disappear in MS Excel.
     @worksheet.row_count.times do |i|
       if @worksheet.row(i).outline_level > 0
         @worksheet.row(i).outline_level = @worksheet.row(i).outline_level
@@ -291,7 +292,7 @@ Please contact the author (hannes dot wyss at gmail dot com) with a sample file
 and minimal code that generates this warning. Thanks!
       EOS
     end
-    work = work.sort_by do |key, (pos, len)|
+    work = work.sort_by do |key, (pos, _)|
       [pos, key.is_a?(Integer) ? key : -1]
     end
     work.each do |key, (pos, len)|
@@ -308,9 +309,12 @@ and minimal code that generates this warning. Thanks!
       reader.seek lastpos
     end
 
-    # Necessary for outline (grouping) and hiding functions 
+    # Necessary for outline (grouping) and hiding functions
     # but these below are not necessary to run
     # if [Row|Column]#hidden? = false and [Row|Column]#outline_level == 0
+    write_merged_cells
+    write_pagesetup
+    write_margins
     write_colinfos
     write_guts
 
@@ -496,6 +500,8 @@ and minimal code that generates this warning. Thanks!
     # ○  PHONETIC ➜ 5.77
     # ○  Conditional Formatting Table ➜ 4.12
     # ○  Hyperlink Table ➜ 4.13
+    write_pagesetup
+    write_margins
     write_hyperlink_table
     # ○  Data Validity Table ➜ 4.14
     # ○  SHEETLAYOUT ➜ 5.96 (BIFF8X only)
@@ -598,7 +604,6 @@ and minimal code that generates this warning. Thanks!
   def write_hyperlink_table
     # TODO: theoretically it's possible to write fewer records by combining
     #       identical neighboring links in cell-ranges
-    links = []
     @worksheet.each do |row|
       row.each_with_index do |cell, idx|
         if cell.is_a? Link
@@ -840,7 +845,7 @@ and minimal code that generates this warning. Thanks!
     if @worksheet.selected
       flags |= 0x0200
     end
-    flags |= 0x0080 # Show outline symbols, 
+    flags |= 0x0080 # Show outline symbols,
                     # but if [Row|Column]#outline_level = 0 the symbols are not shown.
     data = [ flags, 0, 0, 0, 0, 0 ].pack binfmt(:window2)
     write_op opcode(:window2), data
@@ -856,6 +861,27 @@ and minimal code that generates this warning. Thanks!
       count = window.size
       data = ([count] + window.flatten).pack('v2v*')
       write_op opcode(:mergedcells), data
+    end
+  end
+
+  def write_pagesetup
+    return unless @worksheet.pagesetup
+    data = @worksheet.pagesetup[:orig_data].dup
+    if @worksheet.pagesetup[:orientation]
+      data[5] = @worksheet.pagesetup[:orientation] == :landscape ? 0 : 2
+    end
+
+    if @worksheet.pagesetup[:adjust_to]
+      data[1] = @worksheet.pagesetup[:adjust_to]
+    end
+
+    write_op opcode(:pagesetup), data.pack(binfmt(:pagesetup))
+  end
+
+  def write_margins
+    @worksheet.margins.each do |key, value|
+      next unless [:left, :top, :right, :bottom].include?(key)
+      write_op opcode(:"#{key}margin"), [value].pack(binfmt(:margin))
     end
   end
 

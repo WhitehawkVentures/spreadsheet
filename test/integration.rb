@@ -806,7 +806,7 @@ module Spreadsheet
       row.height = 40
       row.push 'x'
       row.pop
-      sheet2 = book.create_worksheet :name => 'my name'
+      book.create_worksheet :name => 'my name' #=> sheet2
       book.write path
       Spreadsheet.client_encoding = 'UTF-16LE'
       str1 = @@iconv.iconv str1
@@ -957,7 +957,7 @@ module Spreadsheet
       sheet1.update_row 7, nil, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0
       sheet1.row(8).default_format = fmt
       sheet1[8,0] = @@iconv.iconv 'formatted when empty'
-      sheet2 = book.create_worksheet :name => @@iconv.iconv("my name")
+      book.create_worksheet :name => @@iconv.iconv("my name") #=> sheet2
       book.write path
       Spreadsheet.client_encoding = 'UTF-8'
       str1 = 'Shared String'
@@ -1233,7 +1233,145 @@ module Spreadsheet
       sheet[0,0] # trigger read_worksheet
       assert_equal [[2, 4, 1, 1], [3, 3, 2, 3]], sheet.merged_cells
     end
+    def test_read_borders
+      path = File.join @data, 'test_borders.xls'
+      book = Spreadsheet.open path
+      assert_instance_of Excel::Workbook, book
+      sheet = book.worksheet 0
+      format  = sheet.row(0).format 0
+      assert_equal :none, format.left
+      assert_equal :thin, format.top
+      assert_equal :medium, format.right
+      assert_equal :thick, format.bottom
+      assert_equal :builtin_black, format.left_color
+      assert_equal :red, format.top_color
+      assert_equal :green, format.right_color
+      assert_equal :yellow, format.bottom_color
+    end
+    def test_write_borders
+      book = Spreadsheet::Workbook.new
+      path = File.join @var, 'test_write_borders.xls'
+      sheet1 = book.create_worksheet
+      (sheet1.row(0).format 0).border = :hair
+      (sheet1.row(0).format 0).border_color = :brown
+      assert_nothing_raised do 
+        book.write path
+      end
+      book2 = Spreadsheet.open path
+      assert_instance_of Excel::Workbook, book2
+      sheet2 = book2.worksheet 0
+      format = sheet2.row(0).format 0
+      assert_equal :hair, format.left
+      assert_equal :brown, format.top_color
+    end
 
+    def test_adding_data_to_existing_file
+      path = File.join @data, 'test_adding_data_to_existing_file.xls'
+      book = Spreadsheet.open path
+      assert_equal(1, book.worksheet(0).rows.count)
+
+      book.worksheet(0).insert_row(1, [12, 23, 34, 45])
+      temp_file = Tempfile.new('temp')
+      book.write(temp_file.path)
+
+      temp_book = Spreadsheet.open temp_file.path
+      assert_equal(2, temp_book.worksheet(0).rows.count)
+
+      temp_file.unlink
+    end
+
+    def test_comment
+      path = File.join @data, 'test_comment.xls'
+      book = Spreadsheet.open path
+      assert_instance_of Excel::Workbook, book
+      sheet = book.worksheet 0
+      sheet.ensure_rows_read
+      #Now two commented fields in sheet
+      assert_equal(true, book.worksheet(0).notes.has_key?([0,18]))
+      assert_equal(true, book.worksheet(0).notes.has_key?([0,2]))
+      assert_equal(false, book.worksheet(0).notes.has_key?([0,3]))
+      assert_equal("Another Author:\n0: switch it off\n1: switch it on",
+                   book.worksheet(0).notes[[0,18]])
+      assert_equal("Some author:\nI have a register name",
+                   book.worksheet(0).notes[[0,2]])
+    end
+    def test_read_pagesetup
+      path = File.join @data, 'test_pagesetup.xls'
+      book = Spreadsheet.open path
+      assert_instance_of Excel::Workbook, book
+      sheet = book.worksheet(0)
+      assert_equal(:landscape, sheet.pagesetup[:orientation])
+      assert_equal(130, sheet.pagesetup[:adjust_to])
+    end
+
+    def test_write_pagesetup
+      book = Spreadsheet::Workbook.new
+      path = File.join @var, 'test_write_pagesetup.xls'
+      sheet1 = book.create_worksheet
+      sheet1.pagesetup[:orientation] = :landscape
+      sheet1.pagesetup[:adjust_to] = 93
+      assert_nothing_raised do
+        book.write path
+      end
+      book2 = Spreadsheet.open path
+      assert_instance_of Excel::Workbook, book2
+      sheet2 = book2.worksheet(0)
+      assert_equal(:landscape, sheet2.pagesetup[:orientation])
+      assert_equal(93, sheet2.pagesetup[:adjust_to])
+    end
+
+    def test_read_margins
+      path = File.join @data, 'test_margin.xls'
+      book = Spreadsheet.open path
+      assert_instance_of Excel::Workbook, book
+      sheet = book.worksheet(0)
+      assert_equal(2.0, sheet.margins[:left])
+    end
+
+    def test_write_margins
+      book = Spreadsheet::Workbook.new
+      path = File.join @var, 'test_write_margins.xls'
+      sheet1 = book.create_worksheet
+      sheet1.margins[:left] = 3
+      assert_nothing_raised do
+        book.write path
+      end
+      book2 = Spreadsheet.open path
+      assert_instance_of Excel::Workbook, book2
+      sheet2 = book2.worksheet(0)
+      assert_equal(3.0, sheet2.margins[:left])
+    end
+
+    def test_read_worksheet_visibility
+      path = File.join @data, 'test_worksheet_visibility.xls'
+      book = Spreadsheet.open path
+      assert_instance_of Excel::Workbook, book
+      assert_equal(:visible, book.worksheet(0).visibility)
+      assert_equal(:hidden, book.worksheet(1).visibility)
+    end
+
+    def test_write_worksheet_visibility
+      book = Spreadsheet::Workbook.new
+      path = File.join @var, 'test_write_worksheet_visibility.xls'
+      sheet1 = book.create_worksheet
+      sheet1.visibility = :hidden
+      sheet2 = book.create_worksheet
+      assert_nothing_raised do
+        book.write path
+      end
+      book2 = Spreadsheet.open path
+      assert_instance_of Excel::Workbook, book2
+      assert_equal(:hidden, book2.worksheet(0).visibility)
+      assert_equal(:visible, book2.worksheet(1).visibility)
+    end
+
+    def test_text_drawing
+      path = File.join @data, 'test_text_drawing.xls'
+      book = Spreadsheet.open path
+      assert_nothing_raised do
+        book.worksheet(0).row(0)
+      end
+    end
     private
 
     # Validates the workbook's SST
