@@ -881,7 +881,7 @@ and minimal code that generates this warning. Thanks!
   def write_margins
     @worksheet.margins.each do |key, value|
       next unless [:left, :top, :right, :bottom].include?(key)
-      write_op opcode(:"#{key}margin"), [value].pack(binfmt(:margin))
+      # XXX JBB: write_op opcode(:"#{key}margin"), [value].pack(binfmt(:margin))
     end
   end
 
