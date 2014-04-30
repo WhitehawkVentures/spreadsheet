@@ -368,7 +368,7 @@ module Internals
     :rightmargin  => 0x0027, # ○  RIGHTMARGIN ➜ 6.81
     :topmargin    => 0x0028, # ○  TOPMARGIN ➜ 6.103
     :bottommargin => 0x0029, # ○  BOTTOMMARGIN ➜ 6.11
-                             # ○  PLS (opcode unknown)
+    :pls          => 0x004d, # ○  PLS (opcode documented in different manual)
     :pagesetup    => 0x00a1, # ○  PAGESETUP ➜ 6.89 (BIFF4-BIFF8 only)
     :bitmap       => 0x00e9, # ○  BITMAP ➜ 6.6 (Background-Bitmap, BIFF8 only)
     ##########################
@@ -380,6 +380,12 @@ module Internals
     :wsbool       => 0x0081, # ○  WSBOOL ➜ 6.113
     :defcolwidth  => 0x0055, # ○  DEFCOLWIDTH ➜ 6.29
     :sort         => 0x0090, # ○  SORT ➜ 6.95
+    ##NOT#DECODED#PREVIOUSLY##
+    :sheetpr      => 0x0081, # ○  SHEETPR ➜ ?.?
+    :sheetprotect => 0x0856, # ○  SHEETPROTECTION ➜ ?.?
+    :dbcell       => 0x00d7, # ○  DBCELL ➜ ?.?
+    :datavalid    => 0x01b2, # ○  DATAVALIDATIONS ➜ ?.?
+    ##NOT#DECODED#PREVIOUSLY##
     :note         => 0x001c,                                                                                                      
     :obj          => 0x005d,                                                                                                      
     :drawing      => 0x00EC,                                                                                                      
