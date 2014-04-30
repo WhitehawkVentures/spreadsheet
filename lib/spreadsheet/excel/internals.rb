@@ -383,7 +383,6 @@ module Internals
     ##NOT#DECODED#PREVIOUSLY##
     :sheetpr      => 0x0081, # ○  SHEETPR ➜ ?.?
     :sheetprotect => 0x0856, # ○  SHEETPROTECTION ➜ ?.?
-    :dbcell       => 0x00d7, # ○  DBCELL ➜ ?.?
     :datavalid    => 0x01b2, # ○  DATAVALIDATIONS ➜ ?.?
     ##NOT#DECODED#PREVIOUSLY##
     :note         => 0x001c,                                                                                                      
